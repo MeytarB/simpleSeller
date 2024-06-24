@@ -29,13 +29,10 @@ func NewHandler() *Handler {
 
 func (h *Handler) mapRoutes() {
 	h.Router.HandleFunc("/post-bid", postBid).Methods("POST")
+	h.Router.Use(middleware.Validate())
 }
 
 func postBid(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
 
 	// Read the entire request body
 	body, err := io.ReadAll(r.Body)
@@ -58,8 +55,8 @@ func postBid(w http.ResponseWriter, r *http.Request) {
 	} else {
 		bidType = "app"
 	}
-	fmt.Println(bidType, w, r)
-	middleware.MiddlewareLog(bidType)
+	fmt.Println("bid tpe is ", bidType)
+	//middleware.MiddlewareLog(bidType)
 
 	// Process the bid request and generate a BidResponse (this part is application-specific)
 	bidResponse := utils.GenerateBidResponse(&bidRequest)
