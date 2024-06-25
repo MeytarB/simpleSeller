@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"simpleSeller/logger"
 	"simpleSeller/middleware"
 	"simpleSeller/ratelimiter"
 	"simpleSeller/utils"
@@ -12,6 +13,8 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/prebid/openrtb/v20/openrtb2"
 )
+
+var AppLogger *logger.Logger
 
 type Handler struct {
 	Router      *mux.Router
@@ -24,7 +27,7 @@ func NewHandler() *Handler {
 		Router:      mux.NewRouter(),
 		Ratelimiter: ratelimiter.NewRedisRateLimiter(),
 	}
-
+	AppLogger = logger.NewLogger()
 	h.mapRoutes()
 	h.Http = &http.Server{
 		Addr:    ":8080",
@@ -72,7 +75,7 @@ func postBid(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, fmt.Sprintf("Error encoding JSON response: %v", err), http.StatusInternalServerError)
 		return
 	}
-
+	logger.LogBidRequest(AppLogger, bidRequest)
 	// write the response
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(responseJSON)
