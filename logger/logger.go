@@ -20,7 +20,7 @@ func NewLogger() *Logger {
 	if err != nil {
 		fmt.Println("error creating log file:", err)
 	}
-	fileHeader := "logger:" + (time.Now().String())
+	fileHeader := "logger:" + (time.Now().String()) + "\n"
 	newFile.Write([]byte(fileHeader))
 	return &Logger{logFile: newFile}
 }
@@ -30,12 +30,12 @@ func (l *Logger) Close() {
 }
 
 type bidReqLogInfo struct {
-	id     string
-	target string
-	adType string
+	Id     string
+	Target string
+	AdType string
 }
 
-func LogBidRequest(l *Logger, breq openrtb2.BidRequest) {
+func LogBidRequest(l *Logger, breq *openrtb2.BidRequest) {
 	l.mtx.Lock()
 	defer l.mtx.Unlock()
 	var target, adType string
@@ -54,7 +54,7 @@ func LogBidRequest(l *Logger, breq openrtb2.BidRequest) {
 		target = "video"
 	}
 
-	breqInfo := bidReqLogInfo{id: breq.ID, target: target, adType: adType}
+	breqInfo := bidReqLogInfo{Id: breq.ID, Target: target, AdType: adType}
 	fmt.Println(breqInfo)
 	breqJSON, _ := json.Marshal(breqInfo)
 	l.logFile.Write(append([]byte("INFO: ")))

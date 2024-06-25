@@ -75,7 +75,7 @@ func postBid(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, fmt.Sprintf("Error encoding JSON response: %v", err), http.StatusInternalServerError)
 		return
 	}
-	logger.LogBidRequest(AppLogger, bidRequest)
+	logger.LogBidRequest(AppLogger, &bidRequest)
 	// write the response
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(responseJSON)
