@@ -3,22 +3,28 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/gorilla/mux"
-	"github.com/prebid/openrtb/v20/openrtb2"
 	"io"
 	"net/http"
 	"simpleSeller/middleware"
+	"simpleSeller/ratelimiter"
 	"simpleSeller/utils"
+
+	"github.com/gorilla/mux"
+	"github.com/prebid/openrtb/v20/openrtb2"
 )
 
 type Handler struct {
-	Router *mux.Router
-	Http   *http.Server
+	Router      *mux.Router
+	Http        *http.Server
+	Ratelimiter *ratelimiter.RedisRateLimiter
 }
 
 func NewHandler() *Handler {
-	h := &Handler{}
-	h.Router = mux.NewRouter()
+	h := &Handler{
+		Router:      mux.NewRouter(),
+		Ratelimiter: ratelimiter.NewRedisRateLimiter(),
+	}
+
 	h.mapRoutes()
 	h.Http = &http.Server{
 		Addr:    ":8080",
@@ -30,11 +36,13 @@ func NewHandler() *Handler {
 func (h *Handler) mapRoutes() {
 	h.Router.HandleFunc("/post-bid", postBid).Methods("POST")
 	h.Router.Use(middleware.Validate())
+	h.Router.Use(ratelimiter.RunLimit(h.Ratelimiter))
+
 }
 
 func postBid(w http.ResponseWriter, r *http.Request) {
 
-	// Read the entire request body
+	// Read request body
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Error reading request body: %v", err), http.StatusInternalServerError)
@@ -42,7 +50,7 @@ func postBid(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 
-	// Parse the request body into an OpenRTB BidRequest struct
+	// Parse the request body into an OpenRTB BidRequest
 	var bidRequest openrtb2.BidRequest
 	err = json.Unmarshal(body, &bidRequest)
 	if err != nil {
@@ -55,10 +63,8 @@ func postBid(w http.ResponseWriter, r *http.Request) {
 	} else {
 		bidType = "app"
 	}
-	fmt.Println("bid tpe is ", bidType)
-	//middleware.MiddlewareLog(bidType)
+	fmt.Println("bid type is ", bidType)
 
-	// Process the bid request and generate a BidResponse (this part is application-specific)
 	bidResponse := utils.GenerateBidResponse(&bidRequest)
 	// Encode the BidResponse to JSON
 	responseJSON, err := json.Marshal(bidResponse)
@@ -67,7 +73,7 @@ func postBid(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Set response content type and write the response
+	// write the response
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(responseJSON)
 
@@ -75,6 +81,7 @@ func postBid(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) InitServer() error {
 	if err := h.Http.ListenAndServe(); err != nil {
+		fmt.Println(err.Error())
 		return err
 	}
 	return nil
